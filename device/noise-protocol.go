@@ -53,10 +53,10 @@ const (
 )
 
 const (
-	MessageInitiationType  = 1
-	MessageResponseType    = 2
-	MessageCookieReplyType = 3
-	MessageTransportType   = 4
+	MessageInitiationType  = 0x40414243
+	MessageResponseType    = 0x44454647
+	MessageCookieReplyType = 0x48494A4B
+	MessageTransportType   = 0x4C4D4E4F
 )
 
 const (
