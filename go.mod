@@ -1,4 +1,4 @@
-module github.com/cawidtu/wireguard
+module github.com/cawidtu/wireguard-go
 
 go 1.20
 
