@@ -102,6 +102,7 @@ func (device *Device) NewPeer(pk NoisePublicKey) (*Peer, error) {
 	handshake.mutex.Lock()
 	handshake.precomputedStaticStatic = device.staticIdentity.privateKey.sharedSecret(pk)
 	handshake.remoteStatic = pk
+        handshake.obfuscator = wgNoiseCreateObfuscator(handshake.remoteStatic)
 	handshake.mutex.Unlock()
 
 	// reset endpoint

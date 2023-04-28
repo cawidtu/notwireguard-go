@@ -13,7 +13,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
+        "github.com/aead/chacha20"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
@@ -46,6 +46,25 @@ func (elem *QueueInboundElement) clearPointers() {
 	elem.keypair = nil
 	elem.endpoint = nil
 }
+
+func wgDeobfuscatePacket(obfuscator [NoisePublicKeySize]byte, buf []byte, len int) {
+
+    decryptLength := min(len&0xFFFC, NoiseObfuscateLenMax) - 4 // sizeof(u32)
+
+    // Initialize the cipher with the obfuscator as the key and the nonce derived from the packet contents.
+
+    var nonce [8]byte;
+
+    copy(nonce[0:4], buf[decryptLength : decryptLength + 4])
+
+    state, err :=  chacha20.NewCipher(nonce[:],obfuscator[:])
+    if err != nil {
+        panic(err)
+    }
+
+    state.XORKeyStream(buf[:decryptLength], buf[:decryptLength])
+}
+
 
 /* Called when a new authenticated message has been received
  *
@@ -115,12 +134,15 @@ func (device *Device) RoutineReceiveIncoming(recv conn.ReceiveFunc) {
 			continue
 		}
 
-		// check size of packet
+		// deobfuscate packet
 
+		wgDeobfuscatePacket(device.staticIdentity.obfuscator, buffer[:], size)
 		packet := buffer[:size]
 		msgType := binary.LittleEndian.Uint32(packet[:4])
 
 		var okay bool
+		var trim bool
+		var headerLen int
 
 		switch msgType {
 
@@ -172,20 +194,35 @@ func (device *Device) RoutineReceiveIncoming(recv conn.ReceiveFunc) {
 			}
 			continue
 
-		// otherwise it is a fixed size & handshake related packet
+		// otherwise it is a "fixed size" & handshake related packet
+
+	        // check minimum length instead of fixed length for obfuscation	
 
 		case MessageInitiationType:
-			okay = len(packet) == MessageInitiationSize
+			okay = len(packet) >= MessageInitiationSize && len(packet) <= NoiseObfuscateLenMax
+			trim = len(packet) > MessageInitiationSize
+			headerLen = MessageInitiationSize
 
 		case MessageResponseType:
-			okay = len(packet) == MessageResponseSize
+			okay = len(packet) >= MessageResponseSize && len(packet) <= NoiseObfuscateLenMax
+                        trim = len(packet) > MessageResponseSize
+			headerLen = MessageResponseSize
 
 		case MessageCookieReplyType:
-			okay = len(packet) == MessageCookieReplySize
+			okay = len(packet) >= MessageCookieReplySize && len(packet) <= NoiseObfuscateLenMax
+                        trim = len(packet) > MessageCookieReplySize
+                        headerLen = MessageCookieReplySize
 
 		default:
 			device.log.Verbosef("Received message with unknown type")
 		}
+
+                // remove the junk added in obfuscation, if necessary
+		if trim {
+			packet = packet[:headerLen]
+		}
+
+
 
 		if okay {
 			select {
@@ -293,7 +330,10 @@ func (device *Device) RoutineHandshake(id int) {
 				// verify MAC2 field
 
 				if !device.cookieChecker.CheckMAC2(elem.packet, elem.endpoint.DstToBytes()) {
-					device.SendHandshakeCookie(&elem)
+                                        // extract the obfuscator key from the packet received
+                                        var obfuscator [32]byte
+                                        copy(obfuscator[:], elem.packet[8:40])
+					device.SendHandshakeCookie(&elem, obfuscator) 
 					goto skip
 				}
 

@@ -14,7 +14,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
-
+	"math/rand"
+	"github.com/aead/chacha20"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/net/ipv4"
 	"golang.org/x/net/ipv6"
@@ -73,6 +74,50 @@ func (elem *QueueOutboundElement) clearPointers() {
 	elem.peer = nil
 }
 
+func wgObfuscatePacket(obfuscator [NoisePublicKeySize]byte, buf *[]byte, length int, maxLength int) int {
+
+    // Calculate the number of 32-bit words to add to the end of the packet
+    nWords := (maxLength - length) >> 2
+
+    newbuf := *buf
+    // Add some random junk to the end of the packet if needed
+    if nWords > 0 {
+        junkSize := (rand.Intn(nWords) + 1) * 4
+        junk := make([]byte, junkSize)
+        
+        _, err := rand.Read(junk)
+	if err != nil {
+		panic(err)
+	}
+        newbuf = append(*buf, junk...)
+        length += junkSize
+    } 
+
+    // Encrypt the packet header using nonce from 4 bytes of the package contents
+    encryptLength := min(length&0xFFFC, NoiseObfuscateLenMax) - 4 
+
+    // The C code uses an 8-byte nonce, of which only the first 4 ones are used
+    var nonce [8]byte
+
+    copy(nonce[0:4], newbuf[encryptLength : encryptLength + 4])
+
+    cipher, err := chacha20.NewCipher(nonce[:],obfuscator[:])
+    if err != nil {
+        panic(err)
+    }
+    cipher.XORKeyStream(newbuf[:encryptLength], newbuf[:encryptLength])
+
+    *buf = newbuf
+    return encryptLength
+}
+
+func min(x, y int) int {
+    if x < y {
+        return x
+    }
+    return y
+}
+
 /* Queues a keepalive if no packets are queued for peer
  */
 func (peer *Peer) SendKeepalive() {
@@ -123,6 +168,9 @@ func (peer *Peer) SendHandshakeInitiation(isRetry bool) error {
 	packet := writer.Bytes()
 	peer.cookieGenerator.AddMacs(packet)
 
+        // obfuscation
+	wgObfuscatePacket(peer.handshake.obfuscator, &packet, MessageInitiationSize, MessageInitiationSize+64)
+
 	peer.timersAnyAuthenticatedPacketTraversal()
 	peer.timersAnyAuthenticatedPacketSent()
 
@@ -154,6 +202,8 @@ func (peer *Peer) SendHandshakeResponse() error {
 	packet := writer.Bytes()
 	peer.cookieGenerator.AddMacs(packet)
 
+	wgObfuscatePacket(peer.handshake.obfuscator, &packet, MessageResponseSize, MessageResponseSize+64)
+
 	err = peer.BeginSymmetricSession()
 	if err != nil {
 		peer.device.log.Errorf("%v - Failed to derive keypair: %v", peer, err)
@@ -171,7 +221,7 @@ func (peer *Peer) SendHandshakeResponse() error {
 	return err
 }
 
-func (device *Device) SendHandshakeCookie(initiatingElem *QueueHandshakeElement) error {
+func (device *Device) SendHandshakeCookie(initiatingElem *QueueHandshakeElement, obfuscator [NoisePublicKeySize]byte) error {
 	device.log.Verbosef("Sending cookie response for denied handshake message for %v", initiatingElem.endpoint.DstToString())
 
 	sender := binary.LittleEndian.Uint32(initiatingElem.packet[4:8])
@@ -184,7 +234,11 @@ func (device *Device) SendHandshakeCookie(initiatingElem *QueueHandshakeElement)
 	var buff [MessageCookieReplySize]byte
 	writer := bytes.NewBuffer(buff[:0])
 	binary.Write(writer, binary.LittleEndian, reply)
-	device.net.bind.Send(writer.Bytes(), initiatingElem.endpoint)
+	packet := writer.Bytes()
+	
+        wgObfuscatePacket(obfuscator, &packet, MessageCookieReplySize, MessageCookieReplySize+64)
+	
+	device.net.bind.Send(packet, initiatingElem.endpoint)
 	return nil
 }
 
@@ -434,8 +488,9 @@ func (peer *Peer) RoutineSequentialSender() {
 		peer.timersAnyAuthenticatedPacketTraversal()
 		peer.timersAnyAuthenticatedPacketSent()
 
-		// send message and return buffer to pool
+		// encrypt and send message and return buffer to pool
 
+                wgObfuscatePacket(peer.handshake.obfuscator, &elem.packet, len(elem.packet), len(elem.packet))
 		err := peer.SendBuffer(elem.packet)
 		if len(elem.packet) != MessageKeepaliveSize {
 			peer.timersDataSent()

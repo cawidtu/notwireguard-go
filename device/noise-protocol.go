@@ -14,7 +14,6 @@ import (
 	"golang.org/x/crypto/blake2s"
 	"golang.org/x/crypto/chacha20poly1305"
 	"golang.org/x/crypto/poly1305"
-
 	"github.com/cawidtu/wireguard-go/tai64n"
 )
 
@@ -60,13 +59,17 @@ const (
 )
 
 const (
-	MessageInitiationSize      = 148                                           // size of handshake initiation message
+	MessageInitiationSize      = 180// was 148, prolonged by 32 bytes obfuscionkey 
+                                        // size of handshake initiation message
 	MessageResponseSize        = 92                                            // size of response message
 	MessageCookieReplySize     = 64                                            // size of cookie reply message
 	MessageTransportHeaderSize = 16                                            // size of data preceding content in transport message
 	MessageTransportSize       = MessageTransportHeaderSize + poly1305.TagSize // size of empty transport
 	MessageKeepaliveSize       = MessageTransportSize                          // size of keepalive
 	MessageHandshakeSize       = MessageInitiationSize                         // size of largest handshake related message
+	NoiseHashLen               = 32 // we use blake2s.size128
+	NoiseObfuscateLenMax       = 192
+   // the final two fields were introduced with the obfuscation code
 )
 
 const (
@@ -84,6 +87,7 @@ const (
 type MessageInitiation struct {
 	Type      uint32
 	Sender    uint32
+        Obfuscator [NoisePublicKeySize]byte // new for obfuscation
 	Ephemeral NoisePublicKey
 	Static    [NoisePublicKeySize + poly1305.TagSize]byte
 	Timestamp [tai64n.TimestampSize + poly1305.TagSize]byte
@@ -130,6 +134,7 @@ type Handshake struct {
 	lastTimestamp             tai64n.Timestamp
 	lastInitiationConsumption time.Time
 	lastSentHandshake         time.Time
+	obfuscator                [NoisePublicKeySize]byte
 }
 
 var (
@@ -172,6 +177,24 @@ func (h *Handshake) mixKey(data []byte) {
 func init() {
 	InitialChainKey = blake2s.Sum256([]byte(NoiseConstruction))
 	mixHash(&InitialHash, &InitialChainKey, []byte(WGIdentifier))
+}
+
+func wgNoiseCreateObfuscator(pubkey [NoisePublicKeySize]byte) [NoisePublicKeySize]byte {
+    const obfsLabel = "obfs----\x00" // the C uses also the terminating 0 byte for the computation of the hash
+    var obfuscator [NoisePublicKeySize]byte
+
+    var err error
+    hash, err := blake2s.New256(nil)
+
+    if err != nil {
+        panic(err)
+    }
+
+    hash.Write([]byte(obfsLabel))
+    hash.Write(pubkey[:])
+    copy(obfuscator[:], hash.Sum(nil))
+
+    return obfuscator
 }
 
 func (device *Device) CreateMessageInitiation(peer *Peer) (*MessageInitiation, error) {
@@ -232,7 +255,7 @@ func (device *Device) CreateMessageInitiation(peer *Peer) (*MessageInitiation, e
 	timestamp := tai64n.Now()
 	aead, _ = chacha20poly1305.New(key[:])
 	aead.Seal(msg.Timestamp[:0], ZeroNonce[:], timestamp[:], handshake.hash[:])
-
+	
 	// assign index
 	device.indexTable.Delete(handshake.localIndex)
 	msg.Sender, err = device.indexTable.NewIndexForHandshake(peer, handshake)
@@ -242,6 +265,9 @@ func (device *Device) CreateMessageInitiation(peer *Peer) (*MessageInitiation, e
 	handshake.localIndex = msg.Sender
 
 	handshake.mixHash(msg.Timestamp[:])
+
+        msg.Obfuscator = handshake.obfuscator // put obfuscation key also in  handshake messsage
+        
 	handshake.state = handshakeInitiationCreated
 	return &msg, nil
 }

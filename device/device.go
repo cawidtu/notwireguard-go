@@ -51,6 +51,8 @@ type Device struct {
 		sync.RWMutex
 		privateKey NoisePrivateKey
 		publicKey  NoisePublicKey
+                // new
+		obfuscator [NoisePublicKeySize]byte
 	}
 
 	peers struct {
@@ -260,6 +262,7 @@ func (device *Device) SetPrivateKey(sk NoisePrivateKey) error {
 
 	device.staticIdentity.privateKey = sk
 	device.staticIdentity.publicKey = publicKey
+        device.staticIdentity.obfuscator = wgNoiseCreateObfuscator(device.staticIdentity.publicKey)
 	device.cookieChecker.Init(publicKey)
 
 	// do static-static DH pre-computations
