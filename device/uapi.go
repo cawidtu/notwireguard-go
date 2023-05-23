@@ -19,7 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cawidtu/wireguard-go/ipc"
+	"github.com/cawidtu/notwireguard-go/ipc"
 )
 
 type IPCError struct {

@@ -21,7 +21,7 @@ import (
 	"golang.org/x/net/ipv6"
 	"golang.org/x/sys/unix"
 
-	"github.com/cawidtu/wireguard-go/rwcancel"
+	"github.com/cawidtu/notwireguard-go/rwcancel"
 )
 
 const (

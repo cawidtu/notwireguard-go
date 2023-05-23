@@ -1,4 +1,4 @@
-module github.com/cawidtu/wireguard-go/rwcancel
+module github.com/cawidtu/notwireguard-go/rwcancel
 
 go 1.18
 

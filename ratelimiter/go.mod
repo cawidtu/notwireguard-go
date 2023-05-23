@@ -1,4 +1,4 @@
-module github.com/cawidtu/wireguard-go/ratelimiter
+module github.com/cawidtu/notwireguard-go/ratelimiter
 
 go 1.18
 

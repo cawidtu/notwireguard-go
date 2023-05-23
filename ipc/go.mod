@@ -1,4 +1,4 @@
-module github.com/cawidtu/wireguard-go/ipc
+module github.com/cawidtu/notwireguard-go/ipc
 
 go 1.18
 

@@ -15,9 +15,9 @@ import (
 	"net/http"
 	"net/netip"
 
-	"github.com/cawidtu/wireguard-go/conn"
-	"github.com/cawidtu/wireguard-go/device"
-	"github.com/cawidtu/wireguard-go/tun/netstack"
+	"github.com/cawidtu/notwireguard-go/conn"
+	"github.com/cawidtu/notwireguard-go/device"
+	"github.com/cawidtu/notwireguard-go/tun/netstack"
 )
 
 func main() {

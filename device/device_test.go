@@ -19,9 +19,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cawidtu/wireguard-go/conn"
-	"github.com/cawidtu/wireguard-go/conn/bindtest"
-	"github.com/cawidtu/wireguard-go/tun/tuntest"
+	"github.com/cawidtu/notwireguard-go/conn"
+	"github.com/cawidtu/notwireguard-go/conn/bindtest"
+	"github.com/cawidtu/notwireguard-go/tun/tuntest"
 )
 
 // uapiCfg returns a string that contains cfg formatted use with IpcSet.

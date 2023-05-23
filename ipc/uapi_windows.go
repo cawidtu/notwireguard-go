@@ -9,7 +9,7 @@ import (
 	"net"
 
 	"golang.org/x/sys/windows"
-	"github.com/cawidtu/wireguard-go/ipc/namedpipe"
+	"github.com/cawidtu/notwireguard-go/ipc/namedpipe"
 )
 
 // TODO: replace these with actual standard windows error numbers from the win package

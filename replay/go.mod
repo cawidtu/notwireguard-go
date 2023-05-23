@@ -1,4 +1,4 @@
-module github.com/cawidtu/wireguard-go/replay
+module github.com/cawidtu/notwireguard-go/replay
 
 go 1.18
 

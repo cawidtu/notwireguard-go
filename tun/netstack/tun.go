@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cawidtu/wireguard-go/tun"
+	"github.com/cawidtu/notwireguard-go/tun"
 
 	"golang.org/x/net/dns/dnsmessage"
 	"gvisor.dev/gvisor/pkg/tcpip"

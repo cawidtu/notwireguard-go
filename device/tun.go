@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
-	"github.com/cawidtu/wireguard-go/tun"
+	"github.com/cawidtu/notwireguard-go/tun"
 )
 
 const DefaultMTU = 1420

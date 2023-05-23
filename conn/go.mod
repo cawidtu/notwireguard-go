@@ -1,4 +1,4 @@
-module github.com/cawidtu/wireguard-go/conn
+module github.com/cawidtu/notwireguard-go/conn
 
 go 1.18
 

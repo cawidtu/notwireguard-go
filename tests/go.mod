@@ -1,4 +1,4 @@
-module github.com/cawidtu/wireguard-go/tests
+module github.com/cawidtu/notwireguard-go/tests
 
 go 1.18
 

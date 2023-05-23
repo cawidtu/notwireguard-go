@@ -15,10 +15,10 @@ import (
 	"strconv"
 	"syscall"
 
-	"github.com/cawidtu/wireguard-go/conn"
-	"github.com/cawidtu/wireguard-go/device"
-	"github.com/cawidtu/wireguard-go/ipc"
-	"github.com/cawidtu/wireguard-go/tun"
+	"github.com/cawidtu/notwireguard-go/conn"
+	"github.com/cawidtu/notwireguard-go/device"
+	"github.com/cawidtu/notwireguard-go/ipc"
+	"github.com/cawidtu/notwireguard-go/tun"
 )
 
 const (

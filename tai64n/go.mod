@@ -1,4 +1,4 @@
-module github.com/cawidtu/wireguard-go/tai64n
+module github.com/cawidtu/notwireguard-go/tai64n
 
 go 1.18
 

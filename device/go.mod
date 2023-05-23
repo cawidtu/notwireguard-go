@@ -1,4 +1,4 @@
-module github.com/cawidtu/wireguard-go/device
+module github.com/cawidtu/notwireguard-go/device
 
 go 1.18
 

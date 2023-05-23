@@ -1,4 +1,4 @@
-module github.com/cawidtu/wireguard-go/tun
+module github.com/cawidtu/notwireguard-go/tun
 
 go 1.18
 
